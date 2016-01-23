@@ -16,14 +16,21 @@ def process_export(export_id):
     # Cleanup oldest export when there are too many
     owner = export.owner
     oldest_export_index = settings.EXPORTS_TO_KEEP - 1
+
     oldest_export = Export.objects \
         .filter(owner=owner) \
         .order_by('-created_on') \
-        .all()[oldest_export_index]
-    Export.objects \
-        .filter(owner=owner) \
-        .filter(created_on__lt=oldest_export.created_on) \
-        .delete()
+        .all()[:oldest_export_index]
+
+    # When there is less export objects than EXPORTS_TO_KEEP-1, the following
+    # delete query fails so we wrap it in try/except clause
+    try:
+        Export.objects \
+            .filter(owner=owner) \
+            .filter(created_on__lt=oldest_export.created_on) \
+            .delete()
+    except AttributeError:
+        pass
 
     export.status = 'processing'
     export.save()
